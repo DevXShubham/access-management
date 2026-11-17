@@ -28,7 +28,7 @@ func (s *TenantService) CreateTenant(
 ) (models.Tenant, error) {
 
 	if strings.TrimSpace(name) == "" {
-		return models.Tenant{}, fmt.Errorf("tenant name cannot be empty")
+		return models.Tenant{}, fmt.Errorf("%w: tenant name cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	newTenant := models.Tenant{
