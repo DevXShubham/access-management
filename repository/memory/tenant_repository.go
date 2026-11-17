@@ -2,8 +2,8 @@ package memory
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"iam/apperrors"
 	"iam/models"
 	"iam/repository"
 	"strings"
@@ -27,7 +27,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant models.Tenant) err
 
 	for _, existingTenant := range r.tenants {
 		if existingTenant.Name == tenant.Name {
-			return errors.New("Tenant name already exists")
+			return fmt.Errorf("%w tenant '%s' already exists", apperrors.ErrTenantAlreadyExists, tenant.Name)
 		}
 	}
 
@@ -43,7 +43,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (models.Tenan
 	tenant, exists := r.tenants[id]
 
 	if !exists {
-		return models.Tenant{}, fmt.Errorf("Tenant not found (id: %s)", id)
+		return models.Tenant{}, fmt.Errorf("%w (id: %s)", apperrors.ErrTenantAlreadyExists, id)
 	}
 
 	return tenant, nil
@@ -59,7 +59,7 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 		}
 	}
 
-	return models.Tenant{}, fmt.Errorf("Tenant not found (name: %s)", name)
+	return models.Tenant{}, fmt.Errorf("%w (name: %s)", apperrors.ErrTenantAlreadyExists, name)
 }
 
 func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Tenant) error {
@@ -69,14 +69,18 @@ func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Ten
 	_, exists := r.tenants[tenantToUpdate.ID]
 
 	if !exists {
-		return fmt.Errorf("Tenant not found (id: %s)", tenantToUpdate.ID)
+		return fmt.Errorf("%w (id: %s)", apperrors.ErrTenantNotFound, tenantToUpdate.ID)
 	}
 
 	// check unique name before updating
 	for _, existingTenant := range r.tenants {
 		if strings.EqualFold(existingTenant.Name, tenantToUpdate.Name) &&
 			existingTenant.ID != tenantToUpdate.ID {
-			return fmt.Errorf("Can't update tenant (tenant name: %s already exists)", tenantToUpdate.Name)
+			return fmt.Errorf(
+				"%w: tenant name '%s' already exists",
+				apperrors.ErrTenantAlreadyExists,
+				tenantToUpdate.Name,
+			)
 		}
 	}
 
@@ -92,7 +96,7 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	_, exists := r.tenants[id]
 
 	if !exists {
-		return fmt.Errorf("Tenant not found (id: %s)", id)
+		return fmt.Errorf("%w (id: %s)", apperrors.ErrTenantNotFound, id)
 	}
 
 	delete(r.tenants, id)

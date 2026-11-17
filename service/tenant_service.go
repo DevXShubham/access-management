@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"iam/apperrors"
 	"iam/models"
 	"iam/repository"
 	"strings"
@@ -51,7 +52,7 @@ func (s *TenantService) GetTenantByID(
 ) (models.Tenant, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return models.Tenant{}, fmt.Errorf("tenant id cannot be empty")
+		return models.Tenant{}, fmt.Errorf("%w: tenant id cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	tenant, err := s.repo.GetByID(ctx, id)
@@ -69,7 +70,7 @@ func (s *TenantService) GetTenantByName(
 ) (models.Tenant, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return models.Tenant{}, fmt.Errorf("tenant name cannot be empty")
+		return models.Tenant{}, fmt.Errorf("%w: tenant name cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	tenant, err := s.repo.GetByName(ctx, name)
@@ -90,11 +91,11 @@ func (s *TenantService) UpdateTenant(
 	tenant.Name = strings.TrimSpace(tenant.Name)
 
 	if tenant.ID == "" {
-		return fmt.Errorf("tenant id cannot be empty")
+		return fmt.Errorf("%w: tenant id cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	if tenant.Name == "" {
-		return fmt.Errorf("tenant name cannot be empty")
+		return fmt.Errorf("%w: tenant name cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	err := s.repo.Update(ctx, tenant)
@@ -112,7 +113,7 @@ func (s *TenantService) DeleteTenant(
 ) error {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return fmt.Errorf("tenant id cannot be empty")
+		return fmt.Errorf("%w: tenant id cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	err := s.repo.Delete(ctx, id)
