@@ -56,3 +56,60 @@ func (h *TenantHandler) CreateTenant(
 		Tenant:  tenant,
 	})
 }
+
+type GetTenantResponse struct {
+	Message string        `json:"message"`
+	Tenant  models.Tenant `json:"tenant"`
+}
+
+func (h *TenantHandler) GetTenantByID(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	id := r.PathValue("id")
+
+	tenant, err := h.service.GetTenantByID(r.Context(), id)
+
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(GetTenantResponse{
+		Message: "tenant found",
+		Tenant:  tenant,
+	})
+}
+
+func (h *TenantHandler) GetTenantByName(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	name := r.PathValue("name")
+
+	tenant, err := h.service.GetTenantByName(r.Context(), name)
+
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(GetTenantResponse{
+		Message: "tenant found",
+		Tenant:  tenant,
+	})
+}
+
+func (h *TenantHandler) UpdateTenant(
+	w http.ResponseWriter,
+	r *http.Request,
+)
+
+func (h *TenantHandler) DeleteTenant(
+	w http.ResponseWriter,
+	r *http.Request,
+)
