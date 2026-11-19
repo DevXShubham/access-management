@@ -16,12 +16,15 @@ type fakeTenantRepository struct {
 	updatedTenant models.Tenant
 	tenant        models.Tenant
 	deletedID     string
+	tenants       []models.Tenant
+	nextCursor    *models.TenantCursor
 
 	createErr    error
 	getByIDErr   error
 	getByNameErr error
 	updateErr    error
 	deleteErr    error
+	getAllErr    error
 }
 
 func (f *fakeTenantRepository) Create(
@@ -60,6 +63,14 @@ func (f *fakeTenantRepository) Delete(
 ) error {
 	f.deletedID = id
 	return f.deleteErr
+}
+
+func (f *fakeTenantRepository) GetAll(
+	ctx context.Context,
+	limit int,
+	cursor *models.TenantCursor,
+) ([]models.Tenant, *models.TenantCursor, error) {
+	return f.tenants, f.nextCursor, f.getAllErr
 }
 
 var _ repository.TenantRepository = (*fakeTenantRepository)(nil)

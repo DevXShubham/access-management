@@ -6,6 +6,9 @@ import (
 	"iam/apperrors"
 	"iam/models"
 	"iam/repository"
+	"maps"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -102,6 +105,62 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	delete(r.tenants, id)
 
 	return nil
+}
+
+func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models.TenantCursor) ([]models.Tenant, *models.TenantCursor, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+
+	allTenants := slices.Collect(maps.Values(r.tenants))
+
+	sort.Slice(allTenants, func(i int, j int) bool {
+		if allTenants[i].CreatedAt.Equal(allTenants[j].CreatedAt) {
+			return allTenants[i].ID < allTenants[j].ID
+		}
+
+		return allTenants[i].CreatedAt.Before(allTenants[j].CreatedAt)
+	})
+
+	startIndex := 0
+
+	if cursor != nil {
+		startIndex = sort.Search(len(allTenants), func(i int) bool {
+			tenant := allTenants[i]
+
+			return tenant.CreatedAt.After(cursor.CreatedAt) ||
+				(tenant.CreatedAt.Equal(cursor.CreatedAt) && tenant.ID > cursor.ID)
+		})
+	}
+
+	hasMore := len(allTenants)-startIndex > limit
+
+	endIndex := startIndex + limit
+
+	if hasMore {
+		endIndex++
+	}
+
+	endIndex = min(endIndex, len(allTenants))
+
+	page := allTenants[startIndex:endIndex]
+
+	var nextCursor *models.TenantCursor
+
+	if hasMore {
+		lastElement := page[len(page)-2]
+		nextCursor = &models.TenantCursor{
+			CreatedAt: lastElement.CreatedAt,
+			ID:        lastElement.ID,
+		}
+
+		page = page[:len(page)-1]
+	}
+
+	return page, nextCursor, nil
 }
 
 var _ repository.TenantRepository = (*TenantRepository)(nil)

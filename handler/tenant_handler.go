@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
+	"iam/apperrors"
 	"iam/models"
 	"iam/service"
 )
@@ -104,12 +107,149 @@ func (h *TenantHandler) GetTenantByName(
 	})
 }
 
+type UpdateTenantRequest struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type UpdateTenantResponse struct {
+	Message string        `json:"message"`
+	Tenant  models.Tenant `json:"tenant"`
+}
+
 func (h *TenantHandler) UpdateTenant(
 	w http.ResponseWriter,
 	r *http.Request,
-)
+) {
+	var req UpdateTenantRequest
+
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&req)
+
+	if err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	updatedTenant := models.Tenant{
+		ID:          req.ID,
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	err = h.service.UpdateTenant(r.Context(), updatedTenant)
+
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(UpdateTenantResponse{
+		Message: "tenant updated",
+		Tenant:  updatedTenant,
+	})
+}
+
+type DeleteTenantResponse struct {
+	Message  string `json:"message"`
+	TenantID string `json:"id"`
+}
 
 func (h *TenantHandler) DeleteTenant(
 	w http.ResponseWriter,
 	r *http.Request,
-)
+) {
+	id := r.PathValue("id")
+
+	err := h.service.DeleteTenant(r.Context(), id)
+
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(DeleteTenantResponse{
+		Message:  "tenant deleted",
+		TenantID: id,
+	})
+}
+
+type GetAllTenantsResponse struct {
+	Message    string          `json:"message"`
+	Tenants    []models.Tenant `json:"tenants"`
+	NextCursor *string         `json:"nextCursor"`
+}
+
+func (h *TenantHandler) GetAllTenants(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	limitStr := r.URL.Query().Get("limit")
+
+	limit := 10
+
+	if limitStr != "" {
+		parsedLimit, err := strconv.Atoi(limitStr)
+
+		if err != nil {
+			WriteError(w, apperrors.ErrInvalidInput)
+			return
+		}
+
+		limit = parsedLimit
+	}
+
+	var cursor *models.TenantCursor
+
+	cursorStr := r.URL.Query().Get("cursor")
+
+	if cursorStr != "" {
+		decoded, err := base64.StdEncoding.DecodeString(cursorStr)
+
+		if err != nil {
+			WriteError(w, apperrors.ErrInvalidInput)
+			return
+		}
+
+		var parsedCursor models.TenantCursor
+
+		if err := json.Unmarshal(decoded, &parsedCursor); err != nil {
+			WriteError(w, apperrors.ErrInvalidInput)
+			return
+		}
+
+		cursor = &parsedCursor
+	}
+
+	tenants, nextCursor, err := h.service.GetAllTenants(r.Context(), limit, cursor)
+
+	if err != nil {
+		WriteError(w, err)
+		return
+	}
+
+	var nextCursorEncoded string
+
+	if nextCursor != nil {
+		nextCursorJson, err := json.Marshal(nextCursor)
+		if err != nil {
+			WriteError(w, err)
+			return
+		}
+
+		nextCursorEncoded = base64.StdEncoding.EncodeToString(nextCursorJson)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(GetAllTenantsResponse{
+		Message:    "tenants retrieved",
+		Tenants:    tenants,
+		NextCursor: &nextCursorEncoded,
+	})
+}

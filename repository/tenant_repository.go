@@ -11,4 +11,5 @@ type TenantRepository interface {
 	GetByName(ctx context.Context, name string) (models.Tenant, error)
 	Update(ctx context.Context, tenant models.Tenant) error
 	Delete(ctx context.Context, id string) error
+	GetAll(ctx context.Context, limit int, cursor *models.TenantCursor) ([]models.Tenant, *models.TenantCursor, error)
 }

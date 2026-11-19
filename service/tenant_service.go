@@ -7,6 +7,7 @@ import (
 	"iam/models"
 	"iam/repository"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -35,6 +36,7 @@ func (s *TenantService) CreateTenant(
 		ID:          uuid.NewString(),
 		Name:        name,
 		Description: description,
+		CreatedAt:   time.Now().UTC(),
 	}
 
 	err := s.repo.Create(ctx, newTenant)
@@ -123,4 +125,23 @@ func (s *TenantService) DeleteTenant(
 	}
 
 	return nil
+}
+
+func (s *TenantService) GetAllTenants(
+	ctx context.Context,
+	limit int,
+	cursor *models.TenantCursor,
+) ([]models.Tenant, *models.TenantCursor, error) {
+
+	if limit <= 0 {
+		return nil, nil, fmt.Errorf("%w: limit must be greater than 0", apperrors.ErrInvalidInput)
+	}
+
+	tenants, nextCursor, err := s.repo.GetAll(ctx, limit, cursor)
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("retrieving tenants: %w", err)
+	}
+
+	return tenants, nextCursor, nil
 }
