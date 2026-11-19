@@ -62,24 +62,24 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 		}
 	}
 
-	return models.Tenant{}, fmt.Errorf("%w (name: %s)", apperrors.ErrTenantAlreadyExists, name)
+	return models.Tenant{}, fmt.Errorf("%w (name: %s)", apperrors.ErrTenantNotFound, name)
 }
 
-func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Tenant) error {
+func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Tenant) (models.Tenant, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	_, exists := r.tenants[tenantToUpdate.ID]
+	existingTenant, exists := r.tenants[tenantToUpdate.ID]
 
 	if !exists {
-		return fmt.Errorf("%w (id: %s)", apperrors.ErrTenantNotFound, tenantToUpdate.ID)
+		return models.Tenant{}, fmt.Errorf("%w (id: %s)", apperrors.ErrTenantNotFound, tenantToUpdate.ID)
 	}
 
 	// check unique name before updating
 	for _, existingTenant := range r.tenants {
 		if strings.EqualFold(existingTenant.Name, tenantToUpdate.Name) &&
 			existingTenant.ID != tenantToUpdate.ID {
-			return fmt.Errorf(
+			return models.Tenant{}, fmt.Errorf(
 				"%w: tenant name '%s' already exists",
 				apperrors.ErrTenantAlreadyExists,
 				tenantToUpdate.Name,
@@ -87,9 +87,11 @@ func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Ten
 		}
 	}
 
-	r.tenants[tenantToUpdate.ID] = tenantToUpdate
+	existingTenant.Name = tenantToUpdate.Name
+	existingTenant.Description = tenantToUpdate.Description
+	r.tenants[tenantToUpdate.ID] = existingTenant
 
-	return nil
+	return existingTenant, nil
 }
 
 func (r *TenantRepository) Delete(ctx context.Context, id string) error {

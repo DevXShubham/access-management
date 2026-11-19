@@ -16,8 +16,9 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /tenants", tenantHandler.CreateTenant)
+	mux.HandleFunc("GET /tenants", tenantHandler.GetAllTenants)
 	mux.HandleFunc("GET /tenants/{id}", tenantHandler.GetTenantByID)
-	mux.HandleFunc("GET /tenants/{name}", tenantHandler.GetTenantByName)
+	mux.HandleFunc("GET /tenants/name/{name}", tenantHandler.GetTenantByName)
 	mux.HandleFunc("PUT /tenants", tenantHandler.UpdateTenant)
 	mux.HandleFunc("DELETE /tenants/{id}", tenantHandler.DeleteTenant)
 

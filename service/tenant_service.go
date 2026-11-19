@@ -87,26 +87,26 @@ func (s *TenantService) GetTenantByName(
 func (s *TenantService) UpdateTenant(
 	ctx context.Context,
 	tenant models.Tenant,
-) error {
+) (models.Tenant, error) {
 
 	tenant.ID = strings.TrimSpace(tenant.ID)
 	tenant.Name = strings.TrimSpace(tenant.Name)
 
 	if tenant.ID == "" {
-		return fmt.Errorf("%w: tenant id cannot be empty", apperrors.ErrInvalidInput)
+		return models.Tenant{}, fmt.Errorf("%w: tenant id cannot be empty", apperrors.ErrInvalidInput)
 	}
 
 	if tenant.Name == "" {
-		return fmt.Errorf("%w: tenant name cannot be empty", apperrors.ErrInvalidInput)
+		return models.Tenant{}, fmt.Errorf("%w: tenant name cannot be empty", apperrors.ErrInvalidInput)
 	}
 
-	err := s.repo.Update(ctx, tenant)
+	updatedTenant, err := s.repo.Update(ctx, tenant)
 
 	if err != nil {
-		return fmt.Errorf("updating tenant: %w", err)
+		return models.Tenant{}, fmt.Errorf("updating tenant: %w", err)
 	}
 
-	return nil
+	return updatedTenant, nil
 }
 
 func (s *TenantService) DeleteTenant(

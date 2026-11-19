@@ -132,13 +132,13 @@ func (h *TenantHandler) UpdateTenant(
 		return
 	}
 
-	updatedTenant := models.Tenant{
+	tenantToUpdate := models.Tenant{
 		ID:          req.ID,
 		Name:        req.Name,
 		Description: req.Description,
 	}
 
-	err = h.service.UpdateTenant(r.Context(), updatedTenant)
+	updatedTenant, err := h.service.UpdateTenant(r.Context(), tenantToUpdate)
 
 	if err != nil {
 		WriteError(w, err)

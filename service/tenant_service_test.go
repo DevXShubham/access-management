@@ -52,9 +52,9 @@ func (f *fakeTenantRepository) GetByName(
 func (f *fakeTenantRepository) Update(
 	ctx context.Context,
 	tenant models.Tenant,
-) error {
+) (models.Tenant, error) {
 	f.updatedTenant = tenant
-	return f.updateErr
+	return f.updatedTenant, f.updateErr
 }
 
 func (f *fakeTenantRepository) Delete(
