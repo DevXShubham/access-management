@@ -121,10 +121,10 @@ func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models
 
 	sort.Slice(allTenants, func(i int, j int) bool {
 		if allTenants[i].CreatedAt.Equal(allTenants[j].CreatedAt) {
-			return allTenants[i].ID < allTenants[j].ID
+			return allTenants[i].ID > allTenants[j].ID
 		}
 
-		return allTenants[i].CreatedAt.Before(allTenants[j].CreatedAt)
+		return allTenants[i].CreatedAt.After(allTenants[j].CreatedAt)
 	})
 
 	startIndex := 0
@@ -133,8 +133,8 @@ func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models
 		startIndex = sort.Search(len(allTenants), func(i int) bool {
 			tenant := allTenants[i]
 
-			return tenant.CreatedAt.After(cursor.CreatedAt) ||
-				(tenant.CreatedAt.Equal(cursor.CreatedAt) && tenant.ID > cursor.ID)
+			return tenant.CreatedAt.Before(cursor.CreatedAt) ||
+				(tenant.CreatedAt.Equal(cursor.CreatedAt) && tenant.ID < cursor.ID)
 		})
 	}
 
