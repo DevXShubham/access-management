@@ -30,7 +30,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant models.Tenant) err
 
 	for _, existingTenant := range r.tenants {
 		if existingTenant.Name == tenant.Name {
-			return fmt.Errorf("%w tenant '%s' already exists", apperrors.ErrTenantAlreadyExists, tenant.Name)
+			return fmt.Errorf("%w: tenant '%s' already exists", apperrors.ErrTenantAlreadyExists, tenant.Name)
 		}
 	}
 
@@ -46,7 +46,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (models.Tenan
 	tenant, exists := r.tenants[id]
 
 	if !exists {
-		return models.Tenant{}, fmt.Errorf("%w (id: %s)", apperrors.ErrTenantAlreadyExists, id)
+		return models.Tenant{}, fmt.Errorf("%w (id: %s)", apperrors.ErrTenantNotFound, id)
 	}
 
 	return tenant, nil
