@@ -4,3 +4,5 @@ archive/
 iam.exe
 
 database/
+
+.vscode/

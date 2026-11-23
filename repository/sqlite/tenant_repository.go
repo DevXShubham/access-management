@@ -50,7 +50,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant models.Tenant) err
 			return fmt.Errorf("%w: tenant '%s' already exists", apperrors.ErrTenantAlreadyExists, tenant.Name)
 		}
 
-		return fmt.Errorf("inserting tenant: %w", err)
+		return fmt.Errorf("inserting tenant: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	return nil
@@ -73,7 +73,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (models.Tenan
 	rows, err := r.db.QueryContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w", err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	if !rows.Next() {
@@ -91,7 +91,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (models.Tenan
 	createdAt, err := parseTime(createdAtStr)
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("parsing time: %w", err)
+		return models.Tenant{}, fmt.Errorf("parsing time: %w\n%w", apperrors.ErrParseTime, err)
 	}
 
 	tenant.CreatedAt = createdAt
@@ -106,7 +106,7 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 	rows, err := r.db.QueryContext(ctx, query, sql.Named("name", name))
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w", err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	if !rows.Next() {
@@ -118,7 +118,7 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 	err = rows.Scan(&tenant.ID, &tenant.Name, &tenant.Description, &createdAtStr)
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by name: %w", err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by name: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	createdAt, err := parseTime(createdAtStr)
@@ -146,8 +146,7 @@ func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Ten
 	)
 
 	if err != nil {
-		// if strings.Contains(err.Error(), )
-		return models.Tenant{}, fmt.Errorf("updating tenant: %w", err)
+		return models.Tenant{}, fmt.Errorf("updating tenant: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	affectedRows, _ := result.RowsAffected()
@@ -165,7 +164,7 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return fmt.Errorf("deleting tenant: %w", err)
+		return fmt.Errorf("deleting tenant: %w\n%w", apperrors.ErrDB, err)
 	}
 
 	affectedRows, _ := result.RowsAffected()
@@ -177,6 +176,85 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models.TenantCursor) ([]models.Tenant, *models.TenantCursor, error) {
-	return nil, nil, nil
+func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models.TenantCursor) (
+	[]models.Tenant, *models.TenantCursor, error,
+) {
+	query := "SELECT id, name, description, createdAt FROM tenants "
+
+	if cursor != nil {
+		query += `
+			WHERE createdAt < :createdAtCursor
+			OR (createdAt = :createdAtCursor
+			AND id < :idCursor)
+		`
+	}
+
+	query += `
+		ORDER BY createdAt DESC, id DESC
+		LIMIT :limit
+	`
+
+	var rows *sql.Rows
+	var err error
+
+	if cursor != nil {
+		rows, err = r.db.QueryContext(ctx, query,
+			sql.Named("createdAtCursor", cursor.CreatedAt),
+			sql.Named("idCursor", cursor.ID),
+			sql.Named("limit", limit+1),
+		)
+	} else {
+		rows, err = r.db.QueryContext(ctx, query, sql.Named("limit", limit+1))
+	}
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetching tenants: %w\n%w", apperrors.ErrDB, err)
+	}
+
+	var tenants []models.Tenant
+
+	for rows.Next() {
+		var id string
+		var name string
+		var description string
+		var createdAtStr string
+
+		rows.Scan(&id, &name, &description, &createdAtStr)
+
+		createdAt, err := parseTime(createdAtStr)
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetching tenants: %w", apperrors.ErrParseTime)
+		}
+
+		tenant := models.Tenant{
+			ID:          id,
+			Name:        name,
+			Description: description,
+			CreatedAt:   createdAt,
+		}
+
+		tenants = append(tenants, tenant)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("reading rows: %w\n%w", apperrors.ErrDB, err)
+	}
+
+	hasMore := len(tenants) > limit
+
+	var nextCursor *models.TenantCursor
+
+	if hasMore {
+		lastTenant := tenants[len(tenants)-2]
+
+		nextCursor = &models.TenantCursor{
+			CreatedAt: lastTenant.CreatedAt,
+			ID:        lastTenant.ID,
+		}
+
+		tenants = tenants[:len(tenants)-1]
+	}
+
+	return tenants, nextCursor, nil
 }

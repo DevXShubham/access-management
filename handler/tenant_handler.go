@@ -233,7 +233,7 @@ func (h *TenantHandler) GetAllTenants(
 		return
 	}
 
-	var nextCursorEncoded string
+	var nextCursorEncoded *string
 
 	if nextCursor != nil {
 		nextCursorJson, err := json.Marshal(nextCursor)
@@ -242,7 +242,8 @@ func (h *TenantHandler) GetAllTenants(
 			return
 		}
 
-		nextCursorEncoded = base64.StdEncoding.EncodeToString(nextCursorJson)
+		enc := base64.StdEncoding.EncodeToString(nextCursorJson)
+		nextCursorEncoded = &enc
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -250,6 +251,6 @@ func (h *TenantHandler) GetAllTenants(
 	json.NewEncoder(w).Encode(GetAllTenantsResponse{
 		Message:    "tenants retrieved",
 		Tenants:    tenants,
-		NextCursor: &nextCursorEncoded,
+		NextCursor: nextCursorEncoded,
 	})
 }

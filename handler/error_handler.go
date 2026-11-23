@@ -28,6 +28,9 @@ func WriteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, apperrors.ErrTenantAlreadyExists):
 		status = http.StatusConflict
 		message = err.Error()
+	case errors.Is(err, apperrors.ErrDB):
+		status = http.StatusInternalServerError
+		message = err.Error()
 	default:
 		log.Fatal("Unknown error: ", err)
 	}
