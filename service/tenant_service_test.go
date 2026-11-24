@@ -170,6 +170,29 @@ func TestCreateTenant_DuplicateTenant(t *testing.T) {
 	}
 }
 
+func TestCreateTenant_RepoError(t *testing.T) {
+	createErr := errors.New("create tenant error")
+	fakeRepo := &fakeTenantRepository{
+		createErr: createErr,
+	}
+
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.CreateTenant(
+		context.Background(),
+		"TestTenantC",
+		"Test Tenant C",
+	)
+
+	if err == nil {
+		t.Fatal("expected error while creating tenant")
+	}
+
+	if !errors.Is(err, createErr) {
+		t.Errorf("expected error: %v, got: %v", createErr, err)
+	}
+}
+
 func TestGetTenantByID_Success(t *testing.T) {
 	testTenant := models.Tenant{
 		Name:        "Tenant XYZ",
@@ -209,6 +232,26 @@ func TestGetTenantByID_EmptyID(t *testing.T) {
 	if err == nil || !errors.Is(err, apperrors.ErrInvalidInput) {
 		t.Fatalf("expected error: %v, got: %v", apperrors.ErrInvalidInput, err)
 	}
+
+	if fakeRepo.gotGetByID != "" {
+		t.Error("repository should not be called for invalid input")
+	}
+}
+
+func TestGetTenantByID_WhitespaceID(t *testing.T) {
+	fakeRepo := &fakeTenantRepository{}
+
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.GetTenantByID(context.Background(), "   ")
+
+	if err == nil || !errors.Is(err, apperrors.ErrInvalidInput) {
+		t.Fatalf("expected error: %v, got: %v", apperrors.ErrInvalidInput, err)
+	}
+
+	if fakeRepo.gotGetByID != "" {
+		t.Error("repository should not be called for invalid input")
+	}
 }
 
 func TestGetTenantByID_NotFound(t *testing.T) {
@@ -226,6 +269,25 @@ func TestGetTenantByID_NotFound(t *testing.T) {
 
 	if !errors.Is(err, apperrors.ErrTenantNotFound) {
 		t.Errorf("expected ErrTenantNotFound, got: %v", err)
+	}
+}
+
+func TestGetTenantByID_RepoError(t *testing.T) {
+	getByIDErr := errors.New("get tenant by id error")
+	fakeRepo := &fakeTenantRepository{
+		getByIDErr: getByIDErr,
+	}
+
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.GetTenantByID(context.Background(), "abcxyz")
+
+	if err == nil {
+		t.Fatal("expected error while fetching tenant by id")
+	}
+
+	if !errors.Is(err, getByIDErr) {
+		t.Errorf("expected error: %v, got: %v", getByIDErr, err)
 	}
 }
 
@@ -288,6 +350,25 @@ func TestGetTenantByName_NotFound(t *testing.T) {
 	}
 }
 
+func TestGetTenantByName_RepoError(t *testing.T) {
+	getByNameErr := errors.New("get tenant by name error")
+	fakeRepo := &fakeTenantRepository{
+		getByNameErr: getByNameErr,
+	}
+
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.GetTenantByName(context.Background(), "abcxyz")
+
+	if err == nil {
+		t.Fatal("expected error while fetching tenant by name")
+	}
+
+	if !errors.Is(err, getByNameErr) {
+		t.Errorf("expected error: %v, got: %v", getByNameErr, err)
+	}
+}
+
 func TestDeleteTenant_Success(t *testing.T) {
 	fakeRepo := &fakeTenantRepository{}
 
@@ -339,7 +420,7 @@ func TestDeleteTenant_NotFound(t *testing.T) {
 	}
 }
 
-func TestDeleteTenant_Error(t *testing.T) {
+func TestDeleteTenant_RepoError(t *testing.T) {
 	tDeletionError := errors.New("tenant deletion error")
 
 	fakeRepo := &fakeTenantRepository{
@@ -421,6 +502,56 @@ func TestUpdateTenant_EmptyIDAndName(t *testing.T) {
 	}
 }
 
+func TestUpdateTenant_EmptyID(t *testing.T) {
+	fakeRepo := &fakeTenantRepository{}
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.UpdateTenant(context.Background(),
+		models.Tenant{
+			ID:          "  ",
+			Name:        "Tenant ABCXYZ",
+			Description: "Tenant with empty id",
+		},
+	)
+
+	if err == nil {
+		t.Fatal("expected error for empty tenant id")
+	}
+
+	if !errors.Is(err, apperrors.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got: %v", err)
+	}
+
+	if fakeRepo.updatedTenant.ID != "" {
+		t.Error("tenant repository should not be called for invalid input")
+	}
+}
+
+func TestUpdateTenant_EmptyName(t *testing.T) {
+	fakeRepo := &fakeTenantRepository{}
+	tenantService := service.NewTenantService(fakeRepo)
+
+	_, err := tenantService.UpdateTenant(context.Background(),
+		models.Tenant{
+			ID:          "abcxyz",
+			Name:        "  ",
+			Description: "Tenant with empty name",
+		},
+	)
+
+	if err == nil {
+		t.Fatal("expected error for empty tenant name")
+	}
+
+	if !errors.Is(err, apperrors.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got: %v", err)
+	}
+
+	if fakeRepo.updatedTenant.ID != "" {
+		t.Error("tenant repository should not be called for invalid input")
+	}
+}
+
 func TestUpdateTenant_NotFound(t *testing.T) {
 	fakeRepo := &fakeTenantRepository{
 		updateErr: apperrors.ErrTenantNotFound,
@@ -443,7 +574,7 @@ func TestUpdateTenant_NotFound(t *testing.T) {
 	}
 }
 
-func TestUpdateTenant_Error(t *testing.T) {
+func TestUpdateTenant_RepoError(t *testing.T) {
 	updateErr := errors.New("tenant update error")
 
 	fakeRepo := &fakeTenantRepository{
@@ -577,7 +708,7 @@ func TestGetAllTenants_SuccessWithoutCursor(t *testing.T) {
 	}
 }
 
-func TestGetAllTenants_InvalidLimit(t *testing.T) {
+func TestGetAllTenants_ZeroLimit(t *testing.T) {
 	fakeRepo := &fakeTenantRepository{}
 	tenantService := service.NewTenantService(fakeRepo)
 
@@ -585,6 +716,33 @@ func TestGetAllTenants_InvalidLimit(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error for invalid limit")
+	}
+
+	if !errors.Is(err, apperrors.ErrInvalidInput) {
+		t.Errorf("expected ErrInvalidInput, got: %v", err)
+	}
+
+	if tenants != nil {
+		t.Errorf("expected nil tenants, got %+v", tenants)
+	}
+
+	if nextCursor != nil {
+		t.Errorf("expected nil next cursor, got %+v", nextCursor)
+	}
+
+	if fakeRepo.gotGetAllLimit != 0 || fakeRepo.gotGetAllCursor != nil {
+		t.Error("tenant repository should not be called for invalid limit")
+	}
+}
+
+func TestGetAllTenants_NegativeLimit(t *testing.T) {
+	fakeRepo := &fakeTenantRepository{}
+	tenantService := service.NewTenantService(fakeRepo)
+
+	tenants, nextCursor, err := tenantService.GetAllTenants(context.Background(), -1, nil)
+
+	if err == nil {
+		t.Fatal("expected error for negative limit")
 	}
 
 	if !errors.Is(err, apperrors.ErrInvalidInput) {
