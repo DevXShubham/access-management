@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"iam/apperrors"
@@ -27,6 +28,11 @@ func WriteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, apperrors.ErrTenantAlreadyExists):
 		status = http.StatusConflict
 		message = err.Error()
+	case errors.Is(err, apperrors.ErrDB):
+		status = http.StatusInternalServerError
+		message = err.Error()
+	default:
+		log.Fatal("Unknown error: ", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
