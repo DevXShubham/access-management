@@ -28,7 +28,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	case errors.Is(err, apperrors.ErrTenantAlreadyExists):
 		status = http.StatusConflict
 		message = err.Error()
-	case errors.Is(err, apperrors.ErrDB):
+	case errors.Is(err, apperrors.ErrDBExecution):
 		status = http.StatusInternalServerError
 		message = err.Error()
 	default:

@@ -23,21 +23,7 @@ func NewTenantRepository(databaseConnection *sql.DB) *TenantRepository {
 }
 
 func (r *TenantRepository) Create(ctx context.Context, tenant models.Tenant) error {
-	sqlStmt := `
-		CREATE TABLE IF NOT EXISTS tenants (
-			id STRING NOT NULL PRIMARY KEY,
-			name STRING NOT NULL UNIQUE,
-			description STRING NOT NULL,
-			createdAt STRING NOT NULL
-		)
-	`
-	_, err := r.db.ExecContext(ctx, sqlStmt)
-
-	if err != nil {
-		return fmt.Errorf("creating table 'tenants': %w", err)
-	}
-
-	_, err = r.db.ExecContext(ctx,
+	_, err := r.db.ExecContext(ctx,
 		"INSERT INTO tenants(id, name, description, createdAt) values(:id, :name, :description, :createdAt)",
 		sql.Named("id", tenant.ID),
 		sql.Named("name", tenant.Name),
@@ -50,7 +36,7 @@ func (r *TenantRepository) Create(ctx context.Context, tenant models.Tenant) err
 			return fmt.Errorf("%w: tenant '%s' already exists", apperrors.ErrTenantAlreadyExists, tenant.Name)
 		}
 
-		return fmt.Errorf("inserting tenant: %w\n%w", apperrors.ErrDB, err)
+		return fmt.Errorf("inserting tenant: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	return nil
@@ -73,7 +59,7 @@ func (r *TenantRepository) GetByID(ctx context.Context, id string) (models.Tenan
 	rows, err := r.db.QueryContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDB, err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	if !rows.Next() {
@@ -106,7 +92,7 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 	rows, err := r.db.QueryContext(ctx, query, sql.Named("name", name))
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDB, err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by id: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	if !rows.Next() {
@@ -118,7 +104,7 @@ func (r *TenantRepository) GetByName(ctx context.Context, name string) (models.T
 	err = rows.Scan(&tenant.ID, &tenant.Name, &tenant.Description, &createdAtStr)
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("getting tenant by name: %w\n%w", apperrors.ErrDB, err)
+		return models.Tenant{}, fmt.Errorf("getting tenant by name: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	createdAt, err := parseTime(createdAtStr)
@@ -146,7 +132,7 @@ func (r *TenantRepository) Update(ctx context.Context, tenantToUpdate models.Ten
 	)
 
 	if err != nil {
-		return models.Tenant{}, fmt.Errorf("updating tenant: %w\n%w", apperrors.ErrDB, err)
+		return models.Tenant{}, fmt.Errorf("updating tenant: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	affectedRows, _ := result.RowsAffected()
@@ -164,7 +150,7 @@ func (r *TenantRepository) Delete(ctx context.Context, id string) error {
 	result, err := r.db.ExecContext(ctx, query, sql.Named("id", id))
 
 	if err != nil {
-		return fmt.Errorf("deleting tenant: %w\n%w", apperrors.ErrDB, err)
+		return fmt.Errorf("deleting tenant: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	affectedRows, _ := result.RowsAffected()
@@ -208,7 +194,7 @@ func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models
 	}
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("fetching tenants: %w\n%w", apperrors.ErrDB, err)
+		return nil, nil, fmt.Errorf("fetching tenants: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	var tenants []models.Tenant
@@ -238,7 +224,7 @@ func (r *TenantRepository) GetAll(ctx context.Context, limit int, cursor *models
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, nil, fmt.Errorf("reading rows: %w\n%w", apperrors.ErrDB, err)
+		return nil, nil, fmt.Errorf("reading rows: %w\n%w", apperrors.ErrDBExecution, err)
 	}
 
 	hasMore := len(tenants) > limit
